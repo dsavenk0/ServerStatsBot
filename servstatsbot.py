@@ -196,7 +196,6 @@ class YourBot(telepot.Bot):
                     tmperiod = "Last %.2f hours" % ((datetime.now() - graphstart).total_seconds() / 3600)
                     bot.sendPhoto(chat_id, plotmemgraph(memlist, xaxis, tmperiod))
 
-
 TOKEN = telegrambot
 
 bot = YourBot(TOKEN)
