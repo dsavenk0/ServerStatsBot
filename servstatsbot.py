@@ -26,7 +26,7 @@ graphstart = datetime.now()
 stopmarkup = {'keyboard': [['Stop']]}
 hide_keyboard = {'hide_keyboard': True}
 
-markup= {'keyboard': [['/info', '/IP', '/shell', '/temperatura'], ['/setmem', '/setpoll', '/memgraph'], ['Stop']]}
+markup= {'keyboard': [['/info', '/ip', '/shell', '/temperatura'], ['/setmem', '/setpoll', '/disk', '/memgraph'], ['Stop']]}
 
 def clearall(chat_id):
     if chat_id in shellexecution:
@@ -35,6 +35,19 @@ def clearall(chat_id):
         settingmemth.remove(chat_id)
     if chat_id in setpolling:
         setpolling.remove(chat_id)
+
+def bytes2human(n):
+# Credits: http://code.activestate.com/recipes/578019
+#thank you fabaff !
+    symbols = ('K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
+    prefix = {}
+    for i, s in enumerate(symbols):
+        prefix[s] = 1 << (i + 1) * 10
+    for s in reversed(symbols):
+        if n >= prefix[s]:
+            value = float(n) / prefix[s]
+            return '%.1f%s' % (value, s)
+    return "%sB" % n
 
 def plotmemgraph(memlist, xaxis, tmperiod):
     # print(memlist)
@@ -65,7 +78,7 @@ class YourBot(telepot.Bot):
         print("Your chat_id:" + str(chat_id)) # this will tell you your chat_id
         if chat_id in adminchatid:  # Store adminchatid variable in tokens.py
             if content_type == 'text':
-                if msg['text'] == '/start' and chat_id not in setpolling:
+                if msg['text'] == '/start' and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, "Hola estoy esperando a tu orden...")
                     time.sleep(1)
@@ -76,13 +89,27 @@ class YourBot(telepot.Bot):
 /memgraph — traza un gráfico del uso de la memoria de un período pasado y le envía una imagen del gráfico;
 /setmem — establece el umbral de la memoria (%) para monitorear y notificar si el uso de la memoria está por encima;
 /setpoll — establece el intervalo de sondeo en segundos (superior a 10).''', reply_markup=markup)
-                elif msg['text'] == "/IP" and chat_id not in settingmemth:
+                elif msg['text'] == "/ip" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
                     p = Popen('curl ifconfig.me', shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
                     output = p.stdout.read()
                     output = output[:-1]
                     bot.sendMessage(chat_id, str("🌍 Mi direccion ip externa : " + str(output, 'utf-8')), reply_markup=markup)
-                elif msg['text'] == "/temperatura" and chat_id not in settingmemth:
+                elif msg['text'] == "/disk" and chat_id:
+                    bot.sendChatAction(chat_id, 'typing')
+                    def disks():
+                        global bytes2human
+                        templ = "%-20s %8s %8s %8s \n"
+                        disks = templ % ("Device", "Total", "Used", "Free")
+                        for part in psutil.disk_partitions(all=False):
+                            usage = psutil.disk_usage(part.mountpoint)
+                            disks = disks + templ % (part.device,
+                                                bytes2human(usage.total),
+                                                bytes2human(usage.used),
+                                                bytes2human(usage.free))
+                        return str(disks)
+                    bot.sendMessage(chat_id, disks(), reply_markup=markup)    
+                elif msg['text'] == "/temperatura" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
                     cpupercent = str(psutil.sensors_temperatures()) 
                     reply = cpupercent.find('current=')
@@ -127,7 +154,7 @@ class YourBot(telepot.Bot):
                     bot.sendMessage(chat_id, reply, reply_markup=markup)
                 elif msg['text'] == "Stop":
                     clearall(chat_id)
-                    bot.sendMessage(chat_id, "[+] Todas las operaciones se detuvieron.", reply_markup=markup)
+                    bot.sendMessage(chat_id, "⛔️ Todas las operaciones se detuvieron.", reply_markup=markup)
                 elif msg['text'] == '/setpoll' and chat_id not in setpolling:
                     bot.sendChatAction(chat_id, 'typing')
                     setpolling.append(chat_id)
@@ -145,7 +172,8 @@ class YourBot(telepot.Bot):
                     except:
                         bot.sendMessage(chat_id, "Por favor envíe un valor numérico apropiado mayor que 10:")
                 elif msg['text'] == "/shell" and chat_id not in shellexecution:
-                    bot.sendMessage(chat_id, text='''📝 Lista de comandos disponibles: 
+                    bot.sendMessage(chat_id, text='''📝 Lista de comandos básicos disponibles:
+                     
 𝗳𝗱𝗶𝘀𝗸 -𝗹 — informacion sobre todas las unidades conectadas;
 𝘂𝗻𝗮𝗺𝗲 -𝗿 — muestra la vercion del kernel de Linux;
 𝗰𝗮𝘁 <𝘥𝘪𝘳𝘦𝘤𝘤𝘪𝘰𝘯>  — ver el contenido del archivo;
@@ -164,7 +192,7 @@ class YourBot(telepot.Bot):
 ...Más...
     ''')
                     time.sleep(1)
-                    bot.sendMessage(chat_id, "✍️ Envíame un comando de shell para ejecutar:", reply_markup=stopmarkup)
+                    bot.sendMessage(chat_id, "✍️ Envíame un comando de 𝘀𝗵𝗲𝗹𝗹 para ejecutar:", reply_markup=stopmarkup)
                     shellexecution.append(chat_id)
                 elif msg['text'] == "/setmem" and chat_id not in settingmemth:
                     bot.sendChatAction(chat_id, 'typing')
@@ -195,6 +223,7 @@ class YourBot(telepot.Bot):
                     bot.sendChatAction(chat_id, 'typing')
                     tmperiod = "Last %.2f hours" % ((datetime.now() - graphstart).total_seconds() / 3600)
                     bot.sendPhoto(chat_id, plotmemgraph(memlist, xaxis, tmperiod))
+
 
 TOKEN = telegrambot
 
