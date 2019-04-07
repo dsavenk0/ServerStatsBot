@@ -7,16 +7,10 @@ from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT
 import operator
 import collections
-# import sys
 import time
-# import threading
-# import random
 import telepot
-# from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardHide, ForceReply
-# from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-# from telepot.namedtuple import InlineQueryResultArticle, InlineQueryResultPhoto, InputTextMessageContent
-
-
+# import sys
+# import os
 
 memorythreshold = 85  # If memory usage more this %
 poll = 300  # seconds
@@ -32,6 +26,8 @@ graphstart = datetime.now()
 stopmarkup = {'keyboard': [['Stop']]}
 hide_keyboard = {'hide_keyboard': True}
 
+markup= {'keyboard': [['/info', '/IP', '/shell', '/temperatura'], ['/setmem', '/setpoll', '/memgraph'], ['Stop']]}
+
 def clearall(chat_id):
     if chat_id in shellexecution:
         shellexecution.remove(chat_id)
@@ -45,7 +41,7 @@ def plotmemgraph(memlist, xaxis, tmperiod):
     # print(xaxis)
     plt.xlabel(tmperiod)
     plt.ylabel('% Used')
-    plt.title('Memory Usage Graph')
+    plt.title('⚡️ Memory Usage Graph')
     plt.text(0.1*len(xaxis), memorythreshold+2, 'Threshold: '+str(memorythreshold)+ ' %')
     memthresholdarr = []
     for xas in xaxis:
@@ -56,7 +52,6 @@ def plotmemgraph(memlist, xaxis, tmperiod):
     plt.close()
     f = open('/tmp/graph.png', 'rb')  # some file on local disk
     return f
-
 
 class YourBot(telepot.Bot):
     def __init__(self, *args, **kwargs):
@@ -70,7 +65,30 @@ class YourBot(telepot.Bot):
         print("Your chat_id:" + str(chat_id)) # this will tell you your chat_id
         if chat_id in adminchatid:  # Store adminchatid variable in tokens.py
             if content_type == 'text':
-                if msg['text'] == '/stats' and chat_id not in shellexecution:
+                if msg['text'] == '/start' and chat_id not in setpolling:
+                    bot.sendChatAction(chat_id, 'typing')
+                    bot.sendMessage(chat_id, "Hola estoy esperando a tu orden...")
+                    time.sleep(1)
+                    bot.sendMessage(chat_id, text='''
+📄 Comandos:
+/info — proporciona estadísticas sumadas sobre la memoria, disk, procesos;
+/shell — entra en el modo de ejecutar comandos de shell y le envía la salida;
+/memgraph — traza un gráfico del uso de la memoria de un período pasado y le envía una imagen del gráfico;
+/setmem — establece el umbral de la memoria (%) para monitorear y notificar si el uso de la memoria está por encima;
+/setpoll — establece el intervalo de sondeo en segundos (superior a 10).''', reply_markup=markup)
+                elif msg['text'] == "/IP" and chat_id not in settingmemth:
+                    bot.sendChatAction(chat_id, 'typing')
+                    p = Popen('curl ifconfig.me', shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+                    output = p.stdout.read()
+                    output = output[:-1]
+                    bot.sendMessage(chat_id, str("🌍 Mi direccion ip externa : " + str(output, 'utf-8')), reply_markup=markup)
+                elif msg['text'] == "/temperatura" and chat_id not in settingmemth:
+                    bot.sendChatAction(chat_id, 'typing')
+                    cpupercent = str(psutil.sensors_temperatures()) 
+                    reply = cpupercent.find('current=')
+                    reply += 8
+                    bot.sendMessage(chat_id, "🔥 Temperatura de la CPU: " + str(reply) + "°C" , reply_markup=markup)
+                elif msg['text'] == '/info' and chat_id not in shellexecution:
                     bot.sendChatAction(chat_id, 'typing')
                     memory = psutil.virtual_memory()
                     disk = psutil.disk_usage('/')
@@ -81,6 +99,7 @@ class YourBot(telepot.Bot):
                     memavail = "Available memory: %.2f GB" % (memory.available / 1000000000)
                     memuseperc = "Used memory: " + str(memory.percent) + " %"
                     diskused = "Disk used: " + str(disk.percent) + " %"
+                    cpupercent = "Cpu usage: " + str(psutil.cpu_percent(1)) + " %"
                     pids = psutil.pids()
                     pidsreply = ''
                     procs = {}
@@ -94,7 +113,7 @@ class YourBot(telepot.Bot):
                                 else:
                                     procs[p.name()] = pmem
                         except:
-                            print("Hm")
+                            print("Hm..")
                     sortedprocs = sorted(procs.items(), key=operator.itemgetter(1), reverse=True)
                     for proc in sortedprocs:
                         pidsreply += proc[0] + " " + ("%.2f" % proc[1]) + " %\n"
@@ -102,61 +121,80 @@ class YourBot(telepot.Bot):
                             memtotal + "\n" + \
                             memavail + "\n" + \
                             memuseperc + "\n" + \
-                            diskused + "\n\n" + \
+                            diskused + "\n" + \
+                            cpupercent + "\n\n" + "Top procesos:"+ "\n" + \
                             pidsreply
-                    bot.sendMessage(chat_id, reply, disable_web_page_preview=True)
+                    bot.sendMessage(chat_id, reply, reply_markup=markup)
                 elif msg['text'] == "Stop":
                     clearall(chat_id)
-                    bot.sendMessage(chat_id, "All operations stopped.", reply_markup=hide_keyboard)
+                    bot.sendMessage(chat_id, "[+] Todas las operaciones se detuvieron.", reply_markup=markup)
                 elif msg['text'] == '/setpoll' and chat_id not in setpolling:
                     bot.sendChatAction(chat_id, 'typing')
                     setpolling.append(chat_id)
-                    bot.sendMessage(chat_id, "Send me a new polling interval in seconds? (higher than 10)", reply_markup=stopmarkup)
+                    bot.sendMessage(chat_id, "¿Enviarme un nuevo intervalo de sondeo en segundos? (superior a 10)", reply_markup=stopmarkup)
                 elif chat_id in setpolling:
                     bot.sendChatAction(chat_id, 'typing')
                     try:
                         global poll
                         poll = int(msg['text'])
                         if poll > 10:
-                            bot.sendMessage(chat_id, "All set!")
+                            bot.sendMessage(chat_id, "✅ Todo listo!")
                             clearall(chat_id)
                         else:
                             1/0
                     except:
-                        bot.sendMessage(chat_id, "Please send a proper numeric value higher than 10.")
+                        bot.sendMessage(chat_id, "Por favor envíe un valor numérico apropiado mayor que 10:")
                 elif msg['text'] == "/shell" and chat_id not in shellexecution:
-                    bot.sendMessage(chat_id, "Send me a shell command to execute", reply_markup=stopmarkup)
+                    bot.sendMessage(chat_id, text='''📝 Lista de comandos disponibles: 
+𝗳𝗱𝗶𝘀𝗸 -𝗹 — informacion sobre todas las unidades conectadas;
+𝘂𝗻𝗮𝗺𝗲 -𝗿 — muestra la vercion del kernel de Linux;
+𝗰𝗮𝘁 <𝘥𝘪𝘳𝘦𝘤𝘤𝘪𝘰𝘯>  — ver el contenido del archivo;
+𝗽𝘄𝗱 — mostrar directorio actual;
+𝗵𝗱𝗽𝗮𝗿𝗺 -𝗶 /𝗱𝗲𝘃/𝘀𝗱𝗮 — mostrar las especificaciones del disco duro;
+𝗽𝘀 — lista de procesos en ejecucion;
+𝘀𝗲𝗿𝘃𝗶𝗰𝗲 <𝘯𝘰𝘮𝘣𝘳𝘦 𝘥𝘦𝘭 𝘱𝘳𝘰𝘤𝘦𝘴𝘰> 𝘀𝘁𝗮𝗿𝘁/𝘀𝘁𝗼𝗽/𝗿𝗲𝘀𝘁𝗮𝗿𝘁 — realizar una accion con este servicio;
+𝗸𝗶𝗹𝗹𝗮𝗹𝗹 <𝘯𝘰𝘮𝘣𝘳𝘦 𝘥𝘦𝘭 𝘱𝘳𝘰𝘤𝘦𝘴𝘰> — matar el proceso por su nombre;
+𝗶𝗳𝘂𝗽/𝗶𝗳𝗱𝗼𝘄𝗻 𝗲𝘁𝗵𝟬 — activar/desactivar la interfaz eth0;
+𝗿𝗼𝘂𝘁𝗲 -𝗻 — mostrat la tabla de enrutamiento local;
+𝗶𝗽 𝗹𝗶𝗻𝗸 𝘀𝗵𝗼𝘄 — mostrar el estado de todas las interfaces;
+𝗼𝗽𝗸𝗴 𝘂𝗽𝗱𝗮𝘁𝗲/𝘂𝗽𝗴𝗿𝗮𝗱𝗲/𝗶𝗻𝘀𝘁𝗮𝗹𝗹 — trabajocon paquetes;
+𝘀𝗵𝘂𝘁𝗱𝗼𝘄𝗻 -𝗵 𝗻𝗼𝘄 — detener el sistema;
+𝗿𝗲𝗯𝗼𝗼𝘁 — reinicie el sistema;
+𝗻𝗺𝗮𝗽 -𝗣𝗻 -𝗔 — escanear los hosts en la red;
+...Más...
+    ''')
+                    time.sleep(1)
+                    bot.sendMessage(chat_id, "Envíame un comando de shell para ejecutar:", reply_markup=stopmarkup)
                     shellexecution.append(chat_id)
                 elif msg['text'] == "/setmem" and chat_id not in settingmemth:
                     bot.sendChatAction(chat_id, 'typing')
                     settingmemth.append(chat_id)
-                    bot.sendMessage(chat_id, "Send me a new memory threshold to monitor?", reply_markup=stopmarkup)
+                    bot.sendMessage(chat_id, "¿Enviarme un nuevo umbral de memoria para monitorear?", reply_markup=stopmarkup)
                 elif chat_id in settingmemth:
                     bot.sendChatAction(chat_id, 'typing')
                     try:
                         global memorythreshold
                         memorythreshold = int(msg['text'])
                         if memorythreshold < 100:
-                            bot.sendMessage(chat_id, "All set!")
+                            bot.sendMessage(chat_id, "✅ Todo listo!")
                             clearall(chat_id)
                         else:
                             1/0
                     except:
-                        bot.sendMessage(chat_id, "Please send a proper numeric value below 100.")
+                        bot.sendMessage(chat_id, "Por favor envíe un valor numérico adecuado por debajo de 100.")
 
                 elif chat_id in shellexecution:
                     bot.sendChatAction(chat_id, 'typing')
                     p = Popen(msg['text'], shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
                     output = p.stdout.read()
                     if output != b'':
-                        bot.sendMessage(chat_id, output, disable_web_page_preview=True)
+                        bot.sendMessage(chat_id, output, reply_markup=markup)
                     else:
-                        bot.sendMessage(chat_id, "No output.", disable_web_page_preview=True)
+                        bot.sendMessage(chat_id, "❌ No hay datos de salida.", reply_markup=markup)
                 elif msg['text'] == '/memgraph':
                     bot.sendChatAction(chat_id, 'typing')
                     tmperiod = "Last %.2f hours" % ((datetime.now() - graphstart).total_seconds() / 3600)
                     bot.sendPhoto(chat_id, plotmemgraph(memlist, xaxis, tmperiod))
-
 
 
 TOKEN = telegrambot
@@ -184,11 +222,11 @@ while 1:
             memlist.append(mempercent)
         memfree = memck.available / 1000000
         if mempercent > memorythreshold:
-            memavail = "Available memory: %.2f GB" % (memck.available / 1000000000)
+            memavail = "Memoria disponible: %.2f GB" % (memck.available / 1000000000)
             graphend = datetime.now()
-            tmperiod = "Last %.2f hours" % ((graphend - graphstart).total_seconds() / 3600)
+            tmperiod = "Último %.2f horas" % ((graphend - graphstart).total_seconds() / 3600)
             for adminid in adminchatid:
-                bot.sendMessage(adminid, "CRITICAL! LOW MEMORY!\n" + memavail)
+                bot.sendMessage(adminid, "⚠️ ¡CRÍTICO MEMORIA BAJA! ⚠️ \n" + memavail)
                 bot.sendPhoto(adminid, plotmemgraph(memlist, xaxis, tmperiod))
     time.sleep(10)  # 10 seconds
     tr += 10
