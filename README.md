@@ -25,6 +25,7 @@ Example graph sent by bot: [Gif](http://i.imgur.com/anX7rJR.gifv)
 
 ![Graph](http://i.imgur.com/K8mG3aM.jpg?1)
 
+![](https://habrastorage.org/webt/mu/t-/yv/mut-yvz2tgyjzipx9b032oaaisk.png)
 # Usage
 
 ## Requirements 
