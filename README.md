@@ -76,15 +76,3 @@ I will reimplement this differently later.
         
  
 # PLEASE CONTRIBUTE :)
- I threw this code together within 10 minutes or so as a mockup to work on it later. But I think it's a nice bot idea and some of you guys might like this too. So please feel free to fork, pull, requests features!
- Can give contributors access!
- Would really love to see this bot grow some fat and brain:)
- 
- 
-# Other bot development
- 
-## Alfred
-[http://alfredthebot.com](http://alfredthebot.com)
- 
- 
- GB
