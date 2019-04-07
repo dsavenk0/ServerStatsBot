@@ -164,7 +164,7 @@ class YourBot(telepot.Bot):
 ...Más...
     ''')
                     time.sleep(1)
-                    bot.sendMessage(chat_id, "Envíame un comando de shell para ejecutar:", reply_markup=stopmarkup)
+                    bot.sendMessage(chat_id, "✍️ Envíame un comando de shell para ejecutar:", reply_markup=stopmarkup)
                     shellexecution.append(chat_id)
                 elif msg['text'] == "/setmem" and chat_id not in settingmemth:
                     bot.sendChatAction(chat_id, 'typing')
