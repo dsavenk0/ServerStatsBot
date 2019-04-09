@@ -6,6 +6,7 @@ import psutil
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT
 from netaddr import IPAddress
+from fastcli import fastcli
 import operator
 import collections
 import time
@@ -40,13 +41,14 @@ shell_pasta ='''📝 Lista de comandos básicos disponibles:
 𝘀𝗵𝘂𝘁𝗱𝗼𝘄𝗻 -𝗵 𝗻𝗼𝘄 — detener el sistema;
 𝗿𝗲𝗯𝗼𝗼𝘁 — reinicie el sistema;
 𝗻𝗺𝗮𝗽 -𝗣𝗻 -𝗔 — escanear los hosts en la red;
-
+                                                                  
 ...Más...'''
 
 memorythreshold = 85  # If memory usage more this %
 poll = 300  # seconds
 
 shellexecution = []
+servicepool = []
 timelist = []
 memlist = []
 xaxis = []
@@ -56,8 +58,8 @@ graphstart = datetime.now()
 
 hide_keyboard = {'hide_keyboard': True}
 service={'keyboard': [['start', 'restart', 'stop', 'status']]}
-markup= {'keyboard': [['/info', '/ip', '/shell', '/temperatura'], ['/disk', '/lan', "/service"], ['/setmem', '/setpoll', '/memgraph']]}
-stopmarkup = {'keyboard': [['Stop']]}
+markup= {'keyboard': [['/info', '/disk', '/ip', '/lan'], [ '/temperatura', '/service', '/speedtest'], ['/setmem', '/setpoll', '/memgraph'], ['/shell']]}
+stopmarkup = {'keyboard': [['Salir']]}
 
 def clearall(chat_id):
     if chat_id in shellexecution:
@@ -80,7 +82,6 @@ def bytes2human(n):
     return "%sB" % n
 
 def disks():
-  global bytes2human
   templ = "%-10s %8s %8s %8s \n"
   disks = templ % ("Device", "Total", "Used", "Free")
   for part in psutil.disk_partitions(all=False):
@@ -143,6 +144,15 @@ def info():
             pidsreply
     return reply
 
+def speedtest():
+    try:                             
+        r = requests.get('https://fast.com')
+        if r.status_code == 200:
+            data = fastcli.main()
+            return str(round(data, 2))
+    except:
+        return str("Eror 404, try to reconnect!")
+
 def scan():
     ip_range = "192.168.8.*" + "/" + str(IPAddress("255.255.255.0").netmask_bits())
     try:
@@ -179,13 +189,11 @@ class YourBot(telepot.Bot):
 
     def on_chat_message(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
-        # Do your stuff according to `content_type` ...
         print("Your chat_id:" + str(chat_id)) # this will tell you your chat_id
         if chat_id in adminchatid:  # Store adminchatid variable in tokens.py
             if content_type == 'text':
                 if msg['text'] == '/start' and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
-                    #global info_pasta
                     bot.sendMessage(chat_id, "Hola estoy esperando a tu orden...")
                     time.sleep(1)
                     bot.sendMessage(chat_id, info_pasta, reply_markup=markup)
@@ -200,16 +208,29 @@ class YourBot(telepot.Bot):
                     bot.sendMessage(chat_id, str("Scanning network... 🔎"))
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, scan(), reply_markup=markup)                    
-                elif msg['text'] == "/service" and chat_id:
+                elif msg['text'] == "/service" and chat_id not in servicepool:
                     bot.sendChatAction(chat_id, 'typing')
                     p = "service " + msg['text']
                     print (p)
-                    if p != b'':
-                        bot.sendMessage(chat_id, output, reply_markup=markup)
-                    bot.sendMessage(chat_id, str(output, 'utf-8'), reply_markup=markup)                 
+                    servicepool.append(chat_id)
+                elif chat_id in servicepool:
+                    bot.sendChatAction(chat_id, 'typing')
+                    p = Popen(msg['text'], shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+                    output = p.stdout.read()
+                    if output != b'':
+                        bot.sendMessage(chat_id, output, reply_markup=stopmarkup)
+                    else:
+                        bot.sendMessage(chat_id, "❌ No hay datos de salida.", reply_markup=stopmarkup)                
                 elif msg['text'] == "/disk" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
-                    bot.sendMessage(chat_id, disks(), reply_markup=markup)    
+                    bot.sendMessage(chat_id, disks(), reply_markup=markup) 
+                elif msg['text'] == "/speedtest" and chat_id:
+                    bot.sendChatAction(chat_id, 'typing')
+                    bot.sendMessage(chat_id, str("Wait 1 min to scan the network speed...😴"))
+                    bot.sendChatAction(chat_id, 'typing')
+                    bot.sendMessage(chat_id, str("Your Internet speed is:"))
+                    bot.sendChatAction(chat_id, 'typing')
+                    bot.sendMessage(chat_id, speedtest() + " (Mbps)", reply_markup=markup)     
                 elif msg['text'] == "/temperatura" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
                     cpupercent = str(psutil.sensors_temperatures()) 
@@ -219,9 +240,9 @@ class YourBot(telepot.Bot):
                 elif msg['text'] == '/info' and chat_id not in shellexecution:
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, "ℹ️ Informacion: \n" + info(), reply_markup=markup)
-                elif msg['text'] == "Stop":
+                elif msg['text'] == "Salir":
                     clearall(chat_id)
-                    bot.sendMessage(chat_id, "⛔️ Todas las operaciones se detuvieron.", reply_markup=markup)
+                    bot.sendMessage(chat_id, "🔙 La operacion se detuvo.", reply_markup=markup)
                 elif msg['text'] == '/setpoll' and chat_id not in setpolling:
                     bot.sendChatAction(chat_id, 'typing')
                     setpolling.append(chat_id)
@@ -232,35 +253,17 @@ class YourBot(telepot.Bot):
                         global poll
                         poll = int(msg['text'])
                         if poll > 10:
-                            bot.sendMessage(chat_id, "✅ Todo listo!")
+                            bot.sendMessage(chat_id, "✅ Los cambios aplicados!")
                             clearall(chat_id)
                         else:
                             1/0
                     except:
                         bot.sendMessage(chat_id, "Por favor envíe un valor numérico apropiado mayor que 10:")
                 elif msg['text'] == "/shell" and chat_id not in shellexecution:
-                    #global info_pasta
                     bot.sendMessage(chat_id, shell_pasta)
                     time.sleep(1)
                     bot.sendMessage(chat_id, "✍️ Envíame un comando de 𝘀𝗵𝗲𝗹𝗹 para ejecutar:", reply_markup=stopmarkup)
-                    shellexecution.append(chat_id)
-                elif msg['text'] == "/setmem" and chat_id not in settingmemth:
-                    bot.sendChatAction(chat_id, 'typing')
-                    settingmemth.append(chat_id)
-                    bot.sendMessage(chat_id, "¿Enviarme un nuevo umbral de memoria para monitorear?", reply_markup=stopmarkup)
-                elif chat_id in settingmemth:
-                    bot.sendChatAction(chat_id, 'typing')
-                    try:
-                        global memorythreshold
-                        memorythreshold = int(msg['text'])
-                        if memorythreshold < 100:
-                            bot.sendMessage(chat_id, "✅ Todo listo!")
-                            clearall(chat_id)
-                        else:
-                            1/0
-                    except:
-                        bot.sendMessage(chat_id, "Por favor envíe un valor numérico adecuado por debajo de 100.")
-
+                    shellexecution.append(chat_id) 
                 elif chat_id in shellexecution:
                     bot.sendChatAction(chat_id, 'typing')
                     p = Popen(msg['text'], shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
@@ -269,10 +272,31 @@ class YourBot(telepot.Bot):
                         bot.sendMessage(chat_id, output, reply_markup=stopmarkup)
                     else:
                         bot.sendMessage(chat_id, "❌ No hay datos de salida.", reply_markup=stopmarkup)
+                elif msg['text'] == "/setmem" and chat_id not in settingmemth:
+                    bot.sendChatAction(chat_id, 'typing')
+                    settingmemth.append(chat_id)
+                    bot.sendMessage(chat_id, "¿Enviarme un nuevo umbral de memoria para monitorear?", reply_markup=stopmarkup)
+                elif chat_id in settingmemth:
+                    bot.sendChatAction(chat_id, 'typing')
+                    try:
+                        global memorythreshold
+                        memorythreshold = int(msg['text'])          
+                        if memorythreshold < 100:
+                            bot.sendMessage(chat_id, "✅ Los cambios aplicados!")
+                            clearall(chat_id)
+                        else:
+                            1/0
+                    except:
+                        bot.sendMessage(chat_id, "Por favor envíe un valor numérico adecuado por debajo de 100.")
                 elif msg['text'] == '/memgraph':
                     bot.sendChatAction(chat_id, 'typing')
                     tmperiod = "Last %.2f hours" % ((datetime.now() - graphstart).total_seconds() / 3600)
                     bot.sendPhoto(chat_id, plotmemgraph(memlist, xaxis, tmperiod))
+                elif msg['text'] == '/help':
+                    bot.sendChatAction(chat_id, 'typing')
+                    bot.sendMessage(chat_id, info_pasta)                  
+                else:
+                    bot.sendMessage(chat_id, "⚠️ Sorry, I didn't understand that command. Type /help to get a list of available commands.", reply_markup=markup)
 
 
 TOKEN = telegrambot
@@ -306,5 +330,5 @@ while 1:
             for adminid in adminchatid:
                 bot.sendMessage(adminid, "⚠️ ¡CRÍTICO MEMORIA BAJA! ⚠️ \n" + memavail)
                 bot.sendPhoto(adminid, plotmemgraph(memlist, xaxis, tmperiod))
-    time.sleep(10)  # 10 seconds
+    time.sleep(10)  # wait 10 seconds
     tr += 10
