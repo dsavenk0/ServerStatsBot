@@ -37,7 +37,7 @@ Example graph sent by bot: [Gif](http://i.imgur.com/anX7rJR.gifv)
     * In order to make sure that `pip` installs packages for the 3+ version:
         * `curl -O https://bootstrap.pypa.io/get-pip.py`
         * `sudo python3 get-pip.py`
-        * After that `pip install psutil`
+        * After that `pip3 install psutil`
         * Also Stackoverflow question about that [here](http://stackoverflow.com/questions/11268501/how-to-use-pip-with-python-3-x-alongside-python-2-x)
 * [matplotlib](http://matplotlib.org/)
     * `sudo apt-get install python3-matplotlib`
