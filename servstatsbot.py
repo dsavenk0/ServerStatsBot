@@ -19,13 +19,20 @@ import requests
 info_pasta ='''
 📄 Comandos:
 /info — proporciona estadísticas sumadas sobre la memoria, disk, procesos;
+/disk — informacion sobre todas las unidades conectadas;
+/ip — muestra su dirección IP externa;
+/lan — escanea todos los dispositivos conectados a la red local;
+/temperatura — muestra información de la temperatura de la CPU;
 /shell — entra en el modo de ejecutar comandos de shell y le envía la salida;
-/memgraph — traza un gráfico del uso de la memoria de un período pasado y le envía una imagen del gráfico;
+/speedtest — herramienta de análisis de velocidad de banda ancha;
 /setmem — establece el umbral de la memoria (%) para monitorear y notificar si el uso de la memoria está por encima;
-/setpoll — establece el intervalo de sondeo en segundos (superior a 10).'''
+/setpoll — establece el intervalo de sondeo en segundos (superior a 10);
+/memgraph — traza un gráfico del uso de la memoria de un período pasado y le envía una imagen del gráfico.'''
 
 shell_pasta ='''📝 Lista de comandos básicos disponibles:
                      
+𝗱𝗳 -𝗵 —  muestra el lugar libre y ocupado en las secciones;
+𝗳𝗿𝗲𝗲 — información de uso de la memoria;
 𝗳𝗱𝗶𝘀𝗸 -𝗹 — informacion sobre todas las unidades conectadas;
 𝘂𝗻𝗮𝗺𝗲 -𝗿 — muestra la vercion del kernel de Linux;
 𝗰𝗮𝘁 <𝘥𝘪𝘳𝘦𝘤𝘤𝘪𝘰𝘯>  — ver el contenido del archivo;
@@ -38,8 +45,8 @@ shell_pasta ='''📝 Lista de comandos básicos disponibles:
 𝗿𝗼𝘂𝘁𝗲 -𝗻 — mostrat la tabla de enrutamiento local;
 𝗶𝗽 𝗹𝗶𝗻𝗸 𝘀𝗵𝗼𝘄 — mostrar el estado de todas las interfaces;
 𝗼𝗽𝗸𝗴 𝘂𝗽𝗱𝗮𝘁𝗲/𝘂𝗽𝗴𝗿𝗮𝗱𝗲/𝗶𝗻𝘀𝘁𝗮𝗹𝗹 — trabajocon paquetes;
-𝘀𝗵𝘂𝘁𝗱𝗼𝘄𝗻 -𝗵 𝗻𝗼𝘄 — detener el sistema;
 𝗿𝗲𝗯𝗼𝗼𝘁 — reinicie el sistema;
+𝗻𝗲𝘁𝘀𝘁𝗮𝘁 -𝘁𝘂𝗽𝗻 — muestra todas las conexiones de red establecidas utilizando los protocolos TCP y UDP ;
 𝗻𝗺𝗮𝗽 -𝗣𝗻 -𝗔 — escanear los hosts en la red;
                                                                   
 ...Más...'''
@@ -58,7 +65,7 @@ graphstart = datetime.now()
 
 hide_keyboard = {'hide_keyboard': True}
 service={'keyboard': [['start', 'restart', 'stop', 'status']]}
-markup= {'keyboard': [['/info', '/disk', '/ip', '/lan'], [ '/temperatura', '/service', '/speedtest'], ['/setmem', '/setpoll', '/memgraph'], ['/shell']]}
+markup= {'keyboard': [['/info', '/disk', '/ip', '/lan'], [ '/temperatura', '/shell', '/speedtest'], ['/setmem', '/setpoll', '/memgraph']]}
 stopmarkup = {'keyboard': [['Salir']]}
 
 def clearall(chat_id):
@@ -82,8 +89,9 @@ def bytes2human(n):
     return "%sB" % n
 
 def disks():
+  #global bytes2human
   templ = "%-10s %8s %8s %8s \n"
-  disks = templ % ("Device", "Total", "Used", "Free")
+  disks = templ % ("💾 Device", "Total", "Used", "Free")
   for part in psutil.disk_partitions(all=False):
       usage = psutil.disk_usage(part.mountpoint)
       disks = disks + templ % (part.device,
@@ -153,6 +161,30 @@ def speedtest():
     except:
         return str("Eror 404, try to reconnect!")
 
+def recupTemp():
+    #print(psutil.sensors_temperatures())
+    sensors_raw = psutil.sensors_temperatures()
+    sensors_coretemp = str(sensors_raw['coretemp'])
+    tmp = []
+    testlabel = ''
+    temperatures = dict()
+    myCores = ['Core 0', 'Core 1']
+    for labelneeded in myCores:
+        while testlabel != labelneeded:
+            index = sensors_coretemp.find(labelneeded)
+            tempString = sensors_coretemp
+            tmp = tempString[index:]
+            tmp = tempString.split("'")
+            for testlabel in tmp:
+                if testlabel == labelneeded:
+                    tmpp = str(tmp)
+                    indext = tmpp.find('current=')
+                    indext += 8
+                    tmpp = tmpp[indext:]
+                    temperatures[testlabel] = int(tmpp.split('.')[0])
+                    break
+    return temperatures['Core 0']
+
 def scan():
     ip_range = "192.168.8.*" + "/" + str(IPAddress("255.255.255.0").netmask_bits())
     try:
@@ -194,7 +226,7 @@ class YourBot(telepot.Bot):
             if content_type == 'text':
                 if msg['text'] == '/start' and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
-                    bot.sendMessage(chat_id, "Hola estoy esperando a tu orden...")
+                    bot.sendMessage(chat_id, "🤖 Hola estoy esperando a tu orden...")
                     time.sleep(1)
                     bot.sendMessage(chat_id, info_pasta, reply_markup=markup)
                 elif msg['text'] == "/ip" and chat_id:
@@ -207,20 +239,7 @@ class YourBot(telepot.Bot):
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, str("Scanning network... 🔎"))
                     bot.sendChatAction(chat_id, 'typing')
-                    bot.sendMessage(chat_id, scan(), reply_markup=markup)                    
-                elif msg['text'] == "/service" and chat_id not in servicepool:
-                    bot.sendChatAction(chat_id, 'typing')
-                    p = "service " + msg['text']
-                    print (p)
-                    servicepool.append(chat_id)
-                elif chat_id in servicepool:
-                    bot.sendChatAction(chat_id, 'typing')
-                    p = Popen(msg['text'], shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
-                    output = p.stdout.read()
-                    if output != b'':
-                        bot.sendMessage(chat_id, output, reply_markup=stopmarkup)
-                    else:
-                        bot.sendMessage(chat_id, "❌ No hay datos de salida.", reply_markup=stopmarkup)                
+                    bot.sendMessage(chat_id, scan(), reply_markup=markup)                                   
                 elif msg['text'] == "/disk" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, disks(), reply_markup=markup) 
@@ -233,10 +252,7 @@ class YourBot(telepot.Bot):
                     bot.sendMessage(chat_id, speedtest() + " (Mbps)", reply_markup=markup)     
                 elif msg['text'] == "/temperatura" and chat_id:
                     bot.sendChatAction(chat_id, 'typing')
-                    cpupercent = str(psutil.sensors_temperatures()) 
-                    reply = cpupercent.find('current=')
-                    reply += 8
-                    bot.sendMessage(chat_id, "🔥 Temperatura de la CPU: " + str(reply) + "°C" , reply_markup=markup)
+                    bot.sendMessage(chat_id, "🔥 Temperatura de la CPU: " + str(recupTemp()) + "°C" , reply_markup=markup)
                 elif msg['text'] == '/info' and chat_id not in shellexecution:
                     bot.sendChatAction(chat_id, 'typing')
                     bot.sendMessage(chat_id, "ℹ️ Informacion: \n" + info(), reply_markup=markup)
