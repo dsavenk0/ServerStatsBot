@@ -186,7 +186,7 @@ def recupTemp():
     return temperatures['Core 0']
 
 def scan():
-    ip_range = "192.168.8.*" + "/" + str(IPAddress("255.255.255.0").netmask_bits())
+    ip_range = "192.168.1.*" + "/" + str(IPAddress("255.255.255.0").netmask_bits())
     try:
         nm = nmap.PortScanner()
         scan = nm.scan(hosts=ip_range, arguments='-sP')
