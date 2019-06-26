@@ -7,7 +7,7 @@ A Telegram Bot:
     * `/disk` - information about all connected units
     * `/ip` - shows your external IP address
     * `/lan` - scans all devices connected to the local network
-    * `/temperatura'` - shows information on the temperature of the CPU
+    * `/temperatura` - shows information on the temperature of the CPU
     * `/shell` - goes into the mode of executing shell commands & sends you the output
     * `/memgraph` - plots a graph of memory usage for a past period and sends you a picture of the graph
     * `/speedtest` - broadband speed analysis tool
