@@ -50,6 +50,7 @@ Example graph sent by bot: [Gif](http://i.imgur.com/anX7rJR.gifv)
 * Bot key & `tokens.py`
     * Hide all the keys and admin variables in `tokens.py`. Use it only for sensitive variables. Avoid creating functions not to clutter the namespaces through the import.
     * Get a key from the [Bot Father](https://telegram.me/BotFather)
+    * Get your id from the [ChatId Bot](https://telegram.me/GiveChatId_Bot)
     * Clone that repo
     * In the folder with the cloned repo create a file `tokens.py`
        * It's added to the `.gitignore` so you don't commit your own (and I don't commit mine:)
