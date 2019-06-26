@@ -39,8 +39,8 @@ Example graph sent by bot: [Gif](http://i.imgur.com/anX7rJR.gifv)
         * `sudo python3 get-pip.py`
         * After that `pip3 install psutil`
         * Also Stackoverflow question about that [here](http://stackoverflow.com/questions/11268501/how-to-use-pip-with-python-3-x-alongside-python-2-x)
-* [matplotlib](http://matplotlib.org/)
-    * `sudo apt-get install python3-matplotlib`
+* [matplotlib](http://matplotlib.org/) and other dependencies
+    * `sudo apt-get install python3-matplotlib wget curl nmap`
 * Bot key & `tokens.py`
     * Hide all the keys and admin variables in `tokens.py`. Use it only for sensitive variables. Avoid creating functions not to clutter the namespaces through the import.
     * Get a key from the [Bot Father](https://telegram.me/BotFather)
