@@ -38,12 +38,12 @@ Example graph sent by bot: [Gif](http://i.imgur.com/anX7rJR.gifv)
 
 * Python 3+
 * [Telepot](https://github.com/nickoala/telepot)
-* [Psutil](https://github.com/giampaolo/psutil)
+* [Psutil](https://github.com/giampaolo/psutil) and other dependencies
     * Make sure to install it for Python 3+
     * In order to make sure that `pip` installs packages for the 3+ version:
         * `curl -O https://bootstrap.pypa.io/get-pip.py`
         * `sudo python3 get-pip.py`
-        * After that `pip3 install psutil`
+        * After that `pip3 install psutil matplotlib netaddr fastcli telepot nmap`
         * Also Stackoverflow question about that [here](http://stackoverflow.com/questions/11268501/how-to-use-pip-with-python-3-x-alongside-python-2-x)
 * [Matplotlib](http://matplotlib.org/) and other dependencies
     * `sudo apt-get install python3-matplotlib wget curl nmap`
